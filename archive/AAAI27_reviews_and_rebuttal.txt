@@ -1,0 +1,372 @@
+AAAI-27 EFD REVIEW / AUTHOR RESPONSES — ARCHIVE
+Source: user-provided text file (2026-10-26-090957)
+Status: archived source, not a new/revised reviewer statement.
+Repository is public; archive included with owner's explicit permission.
+Please consult docs/01_EFD_AND_REVIEW.md for distilled interpretation.
+
+===== BEGIN ORIGINAL SOURCE TEXT =====
+
+Well-controlled comparison, but the experiments do not test the setting the method targets
+Official Reviewby Program Committee 6ytG16 Oct 2026, 20:05 (modified: 24 Oct 2026, 20:17)Program Chairs, Area Chairs, Senior Program Committee, Program Committee 6ytG, Authors, Program Committee SubmittedRevisions
+Paper Summary:
+This paper studies multi-agent LLM decisions when each agent holds only part of the information needed to answer. The authors argue that letting agents first share their own answers and rationales loses facts that are useless locally but decisive for the team. They therefore propose Evidence-First Deliberation (EFD), in which each agent first writes a memo of relevant facts without any answer, and then several decision agents read all memos and vote independently. EFD is compared with an opinion-first baseline that uses the same models, seeds, number of calls, and majority vote. On HiddenBench, distributed HotpotQA and MuSiQue, and a synthetic set-intersection task, EFD improves accuracy by a large margin, and several fixed-report controls suggest that both missing evidence and publicly exposed answers contribute to the gap. On InformativeBench Schedule, EFD does not help.
+
+Strengths:
+The comparison is well controlled, since EFD and the opinion-first baseline differ only in what the first message contains. Scoring is fully programmatic, malformed outputs are counted as wrong, and the authors run many controls, such as fixed stored reports, label injection, and private precommitment. The paper also reports a negative case on Schedule and states its limitations openly, which makes the scope of the claims easy to judge.
+
+Weaknesses:
+My main concern is the setting and its motivation. If all private information can be pooled, the natural solution is to let one agent read all of it, and the paper itself shows that this raw-context baseline performs about the same as EFD (0.5 EM higher) while using half the calls. EFD asks each agent to report every possibly useful fact and then gives every decision agent all memos, so it is close to the raw-context baseline, except that each agent first summarizes its information. The hard part of the hidden-profile setting is that agents cannot or should not share everything and must decide what others need to know. However, the passages are short and the memos copy facts verbatim, so neither length nor privacy limits the pooling. As a result, the experiments do not test the setting that motivates EFD. I suggest evaluating EFD where the raw-context baseline is truly infeasible, for example with long private observations or a fixed message budget per agent.
+
+The gain may come mainly from the opinion-first prompt, which asks only for an answer and a rationale and never for the supporting facts. With Qwen3 in non-thinking mode this baseline often answers "unanswerable", and on MuSiQue Qwen3-8B and Qwen3-14B get 10.9 and 10.0 EM, below Qwen3-4B (20.9) and Qwen2.5-7B (25.6). Where the baseline works, the gain is small (+1.0 EM for Qwen2.5-7B on MuSiQue), and the fact-plus-answer control already narrows the gap.
+
+The novelty is limited. Pooling information before a group decision is the classic recommendation of the hidden-profile literature (Stasser and Titus 1985), and HiddenBench already shows that LLM agents fail to surface unshared information. The paper acknowledges this, and its contribution is mainly one protocol change measured under controlled conditions.
+
+The mechanism experiments use a single seed. Table 3 and Figure 4 use only Qwen3-14B, and Table 5 uses Qwen3-8B, Qwen3-14B, and Gemma3-12B. In Table 3, two memos even outperform three on HotpotQA (53.8 vs 52.6), and the benefit of the third memo (+4.3 EM) is shown only on a 494-item MuSiQue subset.
+
+In the shortlist diagnostic, the opinion-first prompt does not ask agents to report their shortlist at all, so its low accuracy follows from the task design rather than from the order of evidence and decisions.
+
+Justification of Recommendation:
+I lean toward weak reject. The experiments are careful and the paper is clearly written, but weakness 1 is fundamental, because the setting that motivates EFD is never instantiated, and weakness 2 makes it unclear what the reported gains actually measure. I would raise my score if the authors showed a clear advantage of EFD in a setting where the raw-context baseline is infeasible, together with the fact-plus-answer baseline run with Qwen3 thinking enabled.
+
+Specific Points of Feedback for Rebuttal:
+In which practical system would one choose EFD over giving the decision agent all raw observations? Can the authors report the memo length relative to the raw passages?
+How large is the gap between EFD and the fact-plus-answer baseline when Qwen3 thinking is enabled?
+How does EFD compare with the opinion-first baseline when each agent's message is limited to the same small budget, for example k facts or a fixed number of tokens?
+Rating: 5: Marginally below acceptance threshold
+Confidence: 4: The reviewer is confident but not absolutely certain that the evaluation is correct
+Results under per-agent message budgets and with private views beyond the context window, and the Fact+Ans control with Qwen3 thinking enabled
+Author Responseby Authors (xiang ding)25 Oct 2026, 08:16 (modified: 25 Oct 2026, 09:56)Program Chairs, Area Chairs, Senior Program Committee, AuthorsRevisions
+Response:
+We thank the reviewer for the careful review (H/M = HotpotQA/MuSiQue, EM; 95% CIs exclude 0 unless †).
+
+W1/Q3: raw pooling infeasible. Two settings: (a) messages capped at 32/64/128 tokens (Qwen3-14B, Gemma3-12B); (b) ≈12k private tokens per Qwen3-14B agent, so pooled raw exceeds the 32k window. Raw gets the same limit (question-relevant sentences).
+
+Setting	EFD − Opinion	EFD − Raw
+(a) caps, all 12 cells	+3.5 to +19.4	+7.9 to +23.2
+(b) ≈12k-token views	+11.6 / +8.6	+6.4 / +2.4†
+Q2: Fact+Ans with thinking. With Qwen3-8B/14B thinking enabled, EFD leads Fact+Ans by +10.3 to +15.1 and Opinion by +19.1 to +26.3.
+
+Q1. As the paper states, raw pooling is simpler when centralization is feasible. Uncapped memos are 16%/11% of raw, within 0.5 EM; EFD targets records that cannot leave an institution, tool-local logs and context limits.
+
+W2. Memo+Answer (EFD's own extraction prompt plus an answer field) still trails by 13.5/7.1. Gemma rarely abstains (1.6%/7.1%) yet EFD gains +14.6/+12.7; vs. 72B opinions, +9.0/+11.3 (3 seeds). Qwen3's abstentions are the bottleneck itself: a partial view cannot answer. Qwen2.5-7B/MuSiQue is solver-bound (raw beats Opinion by only 3.2).
+
+W4. Over 3 seeds, answer labels on identical memos cost −4.9/−5.9; one memo instead of three, −11.6/−8.2. HotpotQA support never sits on role 3, so two memos hold it all.
+
+W5. With all three exact shortlists given, labels still cut accuracy 99.4→86.6.
+
+A review of EFD
+Official Reviewby Program Committee VHgR08 Oct 2026, 10:59 (modified: 24 Oct 2026, 20:17)Program Chairs, Area Chairs, Senior Program Committee, Program Committee VHgR, Authors, Program Committee SubmittedRevisions
+Paper Summary:
+This paper studies whether agents should share evidence before sharing local answers when they have complementary private information. It proposes Evidence-First Deliberation (EFD): agents first write fact-only memos, then independent agents vote based on the pooled memos. The main baseline asks agents to provide an answer and rationale before voting.
+
+The paper evaluates EFD on HiddenBench, distributed HotpotQA/MuSiQue, a synthetic set-intersection task, and InformativeBench Schedule. EFD consistently outperforms the matched opinion-first baseline on the distributed-information tasks. Additional controls suggest that both missing evidence and exposure to local answers contribute to the gap. The paper argues that evidence-first communication is useful when private views are complementary and local answers are lossy summaries.
+
+Strengths:
+The paper identifies a clear and relevant design choice in multi-agent systems: whether local decisions become public before evidence is pooled.
+
+The main comparison is carefully controlled. EFD and the opinion-first baseline use the same observations, models, seeds, call budget, ballots, and aggregation rule.
+
+The mechanism experiments are a strong part of the paper. In particular, the fixed-report experiments show that removing evidence hurts, while adding local answer labels to the same evidence can also hurt. Besides, The evaluation is broad across models and tasks. The negative result on InformativeBench Schedule is also valuable, since it makes the claim more appropriately scoped.
+
+Weaknesses:
+The novelty is somewhat limited. EFD is a simple protocol change, and the general idea that groups should pool information before deciding is well known. The contribution is mainly a careful empirical demonstration. The paper should sharpen its distinction from prior work on information asymmetry, evidence routing, and multi-agent deliberation.
+
+The practical advantage over centralized context is unclear. The paper shows that raw centralized context performs similarly to EFD while using fewer calls. The paper notes this limitation, but does not demonstrate a realistic setting where centralization is impossible because of privacy, tool access, or context constraints.
+
+The strongest baseline is relatively narrow. The matched opinion-first baseline is appropriate for the paper's main claim, but it remains unclear how EFD compares with stronger evidence-routing or multi-round deliberation systems.
+
+The visual presentation of the figures lacks polish and has a noticeable 'AI-generated' look. Furthermore, the paper lacks a high-level overview diagram to illustrate the specific mechanisms.
+
+Justification of Recommendation:
+This is a careful and clearly written empirical study. The controlled comparisons and fixed-report interventions provide useful evidence that evidence-first communication can help in the specific setting studied.
+
+However, I do not find the contribution strong enough for acceptance. The method is a simple protocol change, and the main QA evaluations are constructed around the condition under which EFD is expected to help: complementary evidence distributed across agents. The paper also does not fully separate the effect of decision visibility from the broader difference between factual memos and answer-centered reports. Finally, centralized raw-context pooling performs similarly with fewer calls, while the paper does not demonstrate a realistic setting where EFD is practically necessary.
+
+These issues do not invalidate the experiments, but they limit the novelty, generality, and practical significance of the paper. I would rate it higher with stronger evidence on naturally occurring partial-information tasks, tighter communication-format controls, and a clearer comparison to stronger multi-agent deliberation baselines.
+
+Specific Points of Feedback for Rebuttal:
+In the gold-blind distributed QA setting, what fraction of initially sampled items remains after filtering for support distributed across multiple roles?
+
+Which existing evidence-routing or information-asymmetry method is closest to EFD? Please clarify the key difference and whether a direct comparison is available.
+
+What concrete deployment setting motivates EFD over centralized raw-context pooling? For example, are privacy, tool access, bandwidth, or context limits the main intended constraints?
+
+Rating: 4: Ok but not good enough - rejection
+Confidence: 4: The reviewer is confident but not absolutely certain that the evaluation is correct
+Format versus visibility control, comparison with debate and evidence routing, and tool-local retrieval
+Author Responseby Authors (xiang ding)25 Oct 2026, 08:19 (modified: 25 Oct 2026, 10:31)Program Chairs, Area Chairs, Senior Program Committee, AuthorsRevisions
+Response:
+Thank you for the thoughtful review. We address the three points in the justification (H/M = HotpotQA/MuSiQue, EM).
+
+1. Visibility vs. format. A 2×2 on stored Qwen3-14B reports (3 seeds) varies each factor separately:
+
+Answer hidden	Answer public
+Fact memo	52.4 / 26.9	47.4 / 21.1
+Opinion rationale	45.2 / 16.3	33.1 / 10.0
+Publishing the answer hurts both message types; same-format answers from another question barely matter (+0.5/−2.8).
+
+2. Stronger baselines. EFD leads multi-hop debate (agents keep their passages) by 18.5–27.6 EM at equal calls (Qwen3-8B/14B, Gemma3-12B; also over 2 rounds) and InfoNav-style routing (3N calls) by +21.9/+16.2.
+
+3. Tool-local retrieval. Each agent searches only its own corpus shard (assigned by title hash; no gold-guided partitioning or item filtering): EFD − Opinion = +11.4/+5.5 (Qwen3-14B, 3 seeds), +16.0/+8.0 where support spans agents.
+
+Novelty. We do not claim pooling as new; we isolate answer visibility with pooled evidence held fixed.
+
+Q1. Gold-blind keeps 70.0%/81.5% of sampled items; the primary split filters nothing.
+
+Q2. Closest: iAgents/InfoNav and InfoDelphi, which jointly change routing, exchange and aggregation; EFD changes only the first message (point 2).
+
+Q3. Private records, tool-local outputs (point 3), context limits: under 32–128-token caps, EFD beats equally capped raw in all 12 cells.
+
+W4. We will redraw the figures and add an overview diagram.
+
+Sharing answer-free evidence before voting is a large, matched-budget protocol effect under distributed information.
+Official Reviewby Program Committee tUa608 Oct 2026, 03:48 (modified: 24 Oct 2026, 20:17)Program Chairs, Area Chairs, Senior Program Committee, Program Committee tUa6, Authors, Program Committee SubmittedRevisions
+Paper Summary:
+The paper argues that multi-agent LLM systems often emit a local answer before pooling complementary private evidence, and that this first-message bottleneck drops facts that are weak locally but decisive jointly. Evidence-First Deliberation (EFD) has agents share decision-free evidence memos, then vote independently. The baseline is opinion-first, with observations, models, seeds, call budget, and aggregation held fixed. On distributed HotpotQA and MuSiQue, EFD gains 12.7 EM across six models, plus a one-seed 72B check. On HiddenBench it wins all 18 model-seed comparisons (four-Qwen macro +36.7). Mistral-Small-24B transfers. Controls (fixed-report, private-precommitment, same-extraction) split two mechanisms: answer-centered reports omit evidence, and public answers interfere with later decisions. EFD does not help when local answers are already good summaries or when the pooled solver fails even with full information.
+
+Strengths:
+The protocol is minimal and the matching (budget, seeds, aggregation) is the right experimental discipline. Reporting where EFD fails is more useful than another always-win agent debate paper. Controls try to separate omitted evidence from answer-visibility interference. Transfer beyond one Qwen family (Mistral-Small-24B) is present.
+
+Weaknesses:
+HiddenBench gains are extremely large (36.7 / 57.4). That is consistent with a bench built around hidden-profile puzzles; the paper should show the same protocol ranking on a standard distributed-info task that was not designed for this failure mode. Opinion-first is a weak neighbor relative to debate / MAD / referee protocols. The claim should be "vs matched opinion-first," not "vs multi-agent deliberation in general." 72B is one seed; several transfer numbers are one seed. This is a prompting/protocol result. Novelty relative to hidden-profile work in social psychology and to LLM debate/society-of-agents papers needs sharper contrast (Stasser-style hidden profiles; Irving debate; MAD). Independent ballots after public memos may still leak implicit answers through which evidence is selected.
+
+Justification of Recommendation:
+I recommend 6 (marginally above threshold). The matched protocol comparison and the two-mechanism split are worth publishing if the HiddenBench construction and the opinion-first baseline are scoped honestly. I would go to 7 if the same ranking holds on a non-custom distributed QA split with at least 3 seeds at 70B-class.
+
+Specific Points of Feedback for Rebuttal:
+How is HiddenBench constructed, and what is EFD vs opinion-first on a standard distributed Hotpot/MuSiQue split with no extra hidden-profile filtering?
+Please add one stronger opinion-exchange baseline (e.g. one round of MAD/debate) at the same call budget.
+For same-extraction controls, can you report the fraction of gold supporting facts that appear in opinion-first reports vs EFD memos?
+Rating: 6: Marginally above acceptance threshold
+Confidence: 4: The reviewer is confident but not absolutely certain that the evaluation is correct
+Annotation-free split with Qwen2.5-72B over three seeds, a matched-budget debate baseline, and support coverage of first messages
+Author Responseby Authors (xiang ding)25 Oct 2026, 08:17 (modified: 25 Oct 2026, 10:19)Program Chairs, Area Chairs, Senior Program Committee, AuthorsRevisions
+Response:
+Thank you for the specific feedback.
+
+Q1: annotation-free split. Qwen2.5-72B (3 seeds, n=1,000 each) on a split that reads no annotation and filters nothing: paragraphs are cut into native-order thirds (H/M = HotpotQA/MuSiQue, EM).
+
+Dataset	EFD	Opinion	EFD − Opinion [95% CI]
+HotpotQA	58.7	53.4	+5.3 [3.3, 7.3]
+MuSiQue	38.1	29.8	+8.3 [6.2, 10.4]
+The ranking holds in every seed (pooled +6.8 [5.4, 8.3]); the primary split gives +9.0/+11.3 (72B, 3 seeds). HiddenBench is the official 65-task release.
+
+Q2: debate at the same budget. Agents keep their passages and revise after peers' answers and rationales:
+
+EFD − debate	Qwen3-8B	Qwen3-14B	Gemma3-12B	Qwen2.5-7B
+1 round (2N)	22.0/18.5	26.3/20.4	27.6/25.2	5.8/0.5
+2 rounds (3N)	20.7/17.3	24.8/19.5	25.4/24.7	4.5/−1.2
+Q3: support in first messages (Qwen3-14B):
+
+Message	Support recall	EM
+EFD memo	64.5/33.7	52.6/26.5
+Opinion	53.6/28.9	33.4/9.7
+Memo+Answer	69.8/40.5	39.1/19.4
+Fact+Ans	81.1/50.6	37.5/17.4
+Memo+Answer and Fact+Ans carry more support yet score lower: omitted facts alone do not explain the gap.
+
+Leakage. A private answer (which may steer selection) is within 5.2 EM of EFD; a public one costs −4.9/−5.9.
+
+Scope and novelty. Agreed; claims will read "vs. matched opinion-first". We do not claim pooling as new; we isolate answer visibility with pooled evidence held fixed.
+
+Phase 1 update
+Official Commentby Program Chairs25 Sept 2026, 06:22 (modified: 25 Sept 2026, 06:22)Program Chairs, Program Committee, Senior Program Committee, Area Chairs, Secondary Senior Program Committee, AuthorsRevisions
+Comment:
+This paper remains in the AAAI-27 review process. Reviews for this paper will be provided at the conclusion of the Phase 2 reviewing period, before opening for Rebuttal.
+
+Evidence before Opinions: Evidence-First Deliberation for Multi-Agent Decisions under Distributed Information
+Official Reviewby Program Committee qS8k30 Aug 2026, 20:11 (modified: 24 Oct 2026, 20:17)Program Chairs, Area Chairs, Senior Program Committee, Program Committee qS8k, Authors, Program Committee SubmittedRevisions
+Paper Summary:
+This paper studies how exposing local answers before pooling distributed evidence can cause information loss and anchoring in multi-agent LLM systems. It proposes EFD, where agents first share decision-free evidence memos and independent decision agents then vote using the pooled evidence. Experiments on hidden-profile tasks, distributed multi-hop QA, and a controlled set-intersection task show consistent gains over a call-matched opinion-first protocol across several model families. Additional controls suggest that both evidence omission and public answer exposure contribute to the improvement.
+
+Strengths:
+The paper identifies a clear and important protocol choice that is often implicit in multi-agent systems. The distinction between pooling evidence and exposing decisions is easy to understand and is formalized through a sufficiency view and an explicit ordering constraint.
+
+The empirical evidence is broad and consistent. The paper covers native hidden-profile tasks, constructed multi-hop QA, a synthetic task with exact scoring, a negative boundary benchmark, several model sizes, three model families, and repeated seeds for the main grid.
+
+The mechanism analysis is a major strength. The fixed-report evidence-dose intervention, public-label injection, private precommitment, fact-complete reporting, and same-extraction control directly test plausible explanations. The paper does not rely only on qualitative examples.
+
+The limitations and boundary conditions are stated clearly. In particular, the paper acknowledges that raw pooling is cheaper when centralization is possible and that EFD cannot help when the pooled solver fails even with complete information.
+
+Weaknesses:
+The strongest multi-hop results come from deliberately constructed information partitions. Supporting paragraphs are distributed across agents using gold support annotations. The gold-blind control removes one source of leakage, but it still retains items based on whether the realized split spans multiple supporting roles. This is not a flaw in the internal causal comparison, but it limits the external validity of the large gains. A stronger paper would include realistic private tool outputs or naturally distributed agent observations.
+
+The practical comparison is narrower than the causal analysis. The matched opinion-first baseline is appropriate for isolating the first-message contract, but it does not establish that EFD is better than strong systems with adaptive evidence routing, selective communication, or confidence-aware aggregation. This is a scope limitation that could be addressed by separating the causal claim from the claim of practical superiority.
+
+The experiments support roles for evidence omission and public answer exposure, but they do not fully isolate the mechanism of the latter. Adding an answer label also changes message length, token order, and salience. The private-precommitment and same-extraction controls make simple prompt-quality explanations unlikely, but the precise source of the anchoring effect remains unresolved. This is a fixable mechanism limitation rather than a problem with the main empirical finding.
+
+Justification of Recommendation:
+Overall, this paper provides a clear contribution with a strong matched design. The main conclusion is well scoped and is supported across several tasks and model families. The main factors preventing a higher score are the artificial construction of much of the distributed QA setting and the lack of comparison with stronger practical orchestration systems. Evidence from naturally decentralized agent workloads would make the contribution more compelling.
+
+Specific Points of Feedback for Rebuttal:
+Please clarify exactly which steps in the gold-blind construction use supporting-fact annotations and whether any selection is performed after inspecting the realized support allocation.
+
+Please report the average phase-one message length and total token use for EFD, opinion-first, and the same-extraction control for the main model grid if these values are already available.
+
+Please clarify whether the Memo plus Answer control preserves the evidence memo verbatim before appending the answer and whether the answer always appears in the same message position.
+
+Please distinguish the intended causal claim from any claim that EFD is competitive with state-of-the-art adaptive communication systems.
+
+Rating: 6: Marginally above acceptance threshold
+Confidence: 4: The reviewer is confident but not absolutely certain that the evaluation is correct
+Isolating the label effect, tool-local retrieval, comparison with debate and evidence routing, and the causal versus practical claim
+Author Responseby Authors (xiang ding)25 Oct 2026, 08:18 (modified: 25 Oct 2026, 10:19)Program Chairs, Area Chairs, Senior Program Committee, AuthorsRevisions
+Response:
+Thank you for the precise questions. Q4: agreed; our claim is a causal effect under matched conditions, not superiority over adaptive systems; EFD composes with them.
+
+W3: content or length/order? Fixed-report controls, Qwen3-14B (3 seeds; H/M = HotpotQA/MuSiQue; ΔEM vs. three plain memos):
+
+Added to the same memos	ΔEM
+own answers, at the end	−4.9 / −5.9
+own answers, placed first	−3.8 / −6.1
+another question's answers, same format	+0.5 / −2.8
+Own minus foreign answers is −5.4/−3.1 (CIs exclude 0), implicating answer content, not length or position alone.
+
+W1: tool-local observations. If each agent searches only its own corpus shard (assigned by title hash; no gold-guided partitioning or item filtering), EFD − Opinion is +11.4/+5.5 (3 seeds), +16.0/+8.0 where support spans agents.
+
+W2: stronger systems. EFD leads debate at equal calls by 18.5–27.6 EM (Qwen3-8B/14B, Gemma3-12B) and InfoNav-style routing (3N calls) by 21.9/16.2.
+
+Q1. Gold-blind: label-free shuffle; annotations are used only afterwards, for one rule (support spans ≥2 agents), keeping 70.0%/81.5%; answers/outputs are never read.
+
+Q2. Qwen3-14B, H/M:
+
+Tokens/message	Tokens/item
+EFD memo	66/79	2.8k/4.1k
+Opinion	102/114	3.2k/4.5k
+Memo+Answer	107/120	3.4k/4.7k
+Q3. Memo+Answer regenerates the memo (not verbatim); the answer follows the facts in ≥99.9% of cases. Table 3 is the verbatim test (stored memos + appended label).
+
+Strong Empirical Evidence, but Limited Novelty and Unclear Positioning
+Official Reviewby Program Committee Satb27 Aug 2026, 22:40 (modified: 24 Oct 2026, 20:17)Program Chairs, Area Chairs, Senior Program Committee, Program Committee Satb, Authors, Program Committee SubmittedRevisions
+Paper Summary:
+This paper studies multi-agent decision-making under distributed information and identifies a first-message bottleneck: locally formed answers may discard evidence that is uninformative in isolation but useful when combined with other agents' observations. The proposed Evidence-First Deliberation (EFD) asks agents to first share decision-free evidence memos and then make independent decisions after pooling evidence. Experiments on HiddenBench, distributed HotpotQA/MuSiQue, and controlled diagnostics show substantial improvements over a matched opinion-first baseline.
+
+Strengths:
+The experimental design is careful and convincing. The paper controls observations, models, generation seeds, call budgets, and aggregation, and further includes fixed-report interventions, private precommitment, evidence ablations, and answer-label injection. These experiments provide substantially stronger evidence than a simple comparison of prompts.
+
+The paper provides useful boundary conditions. EFD is not claimed to be universally superior: it helps mainly when agents hold complementary information, local decisions are lossy summaries, and the pooled solver remains capable of solving the task.
+
+Weaknesses:
+Limited novelty and insufficient positioning against shared-memory/selective-communication paradigms. The central method is very simple: report evidence first and delay public answers until after evidence pooling. While the controlled empirical finding is interesting, related multi-agent work has already explored shared message pools, selective information consumption, communication pruning, and adaptive information routing [1,2,3]. The paper does not sufficiently clarify whether its key contribution is truly ``evidence before opinions'' or the more general principle of avoiding irreversible local compression before selecting information globally informed.
+
+The practical advantage over preserving raw observations is not clear enough. The paper reports that centralized raw pooling is approximately competitive with EFD, while requiring fewer model calls, and explicitly notes that raw pooling is preferable when centralization is feasible. Therefore, EFD appears most relevant only when raw observations cannot be retained or globally accessed due to privacy, context length, tool locality, or communication constraints. However, these constraints are not directly evaluated in the main experiments.
+
+The mechanism claim is only partially isolated. The answer-label injection experiment convincingly shows that exposing local decisions can hurt subsequent decisions, but the magnitude of this effect explains only part of the total EFD–opinion gap. Thus, the results support multiple contributing factors, evidence omission and public-decision exposure, but do not fully isolate their relative contributions or interactions.
+
+[1] MetaGPT: Meta Programming for A Multi-Agent Collaborative Framework
+
+[2] Cut the Crap: An Economical Communication Pipeline for LLM-based Multi-Agent Systems
+
+[3] Adaptive Graph Pruning for Multi-Agent Communication
+
+Justification of Recommendation:
+The paper is technically sound and experimentally strong, and I find the reported phenomenon credible. However, my main concern is whether the conceptual contribution is sufficiently novel for a full conference paper. The proposed protocol itself is minimal, and the current experiments do not clearly distinguish ``evidence before opinions'' from broader shared-memory or delayed-compression strategies. I prefer a borderline score primarily for novelty and positioning rather than correctness.
+
+Specific Points of Feedback for Rebuttal:
+How is EFD fundamentally different from shared-memory or selective-communication systems in which raw/minimally processed observations remain accessible and downstream agents retrieve relevant information as needed?
+Do the authors view the core principle as evidence before opinions'' or, more generally, globally informed selection before irreversible local compression''?
+What practical constraints make EFD preferable to raw shared memory or centralized retrieval, given that the raw-pooling baseline is competitive and cheaper?
+How strongly do the authors intend to interpret the public-decision interference mechanism, given that answer-label exposure explains only part of the overall performance gap?
+Rating: 5: Marginally below acceptance threshold
+Confidence: 3: The reviewer is fairly confident that the evaluation is correct
+The principle (no public decision before pooling), content versus exposure, and positioning against shared-memory and pruning systems
+Author Responseby Authors (xiang ding)25 Oct 2026, 08:20 (modified: 25 Oct 2026, 10:22)Program Chairs, Area Chairs, Senior Program Committee, AuthorsRevisions
+Response:
+We thank the reviewer for engaging with the underlying principle.
+
+Q2: which principle? Compression per se is not the harmful step: memos compress passages to 16%/11% yet stay within 0.5 EM of raw. What hurts is compressing to a local decision and making it public before evidence is pooled (
+). A 2×2 on stored Qwen3-14B reports separates content from exposure (3 seeds, EM, HotpotQA/MuSiQue):
+
+Answer hidden	Answer public
+Fact memo	52.4 / 26.9	47.4 / 21.1
+Opinion rationale	45.2 / 16.3	33.1 / 10.0
+Q4: strength of the interference claim. We read exposure as one of two causal contributors, alongside content (rows above); answers from another question barely matter (+0.5/−2.8).
+
+Q1: shared memory and selective communication. MetaGPT's pool, AgentPrune and AGP decide who reads which message and how much is sent, taking content as given (MetaGPT roles publish decisions). EFD fixes what the first message contains and when a decision becomes public, so it composes with them. Readable raw shared memory corresponds to our raw reference. We will add this positioning to Related Work.
+
+Q3: practical constraints. Where raw cannot be shared whole, EFD remains ahead: under 32–128-token message caps it beats opinion-first and equally capped raw in all 12 cells; with ≈12k-token private views (pooled raw > 32k window) it beats opinion-first by +11.6/+8.6 and stays ahead of raw cut to fit.
+
+AI Review
+AI Reviewby AI Reviewer ()27 Jul 2026, 19:59 (modified: 24 Oct 2026, 20:17)Program Chairs, AI Reviewer, Area Chairs, Senior Program Committee, Authors, Program Committee SubmittedRevisions
+Review:
+Title: Evidence before Opinions: Evidence-First Deliberation for Multi-Agent Decisions under Distributed Information
+
+Synopsis of the paper
+The paper studies how multi-agent language-model systems combine complementary private information. It identifies a first-message bottleneck in which answer-centered reports omit facts needed for a later joint decision, and proposes Evidence-First Deliberation, which pools decision-free evidence before collecting independent ballots. Experiments across hidden-profile tasks, distributed question answering, scheduling, and a synthetic diagnostic examine performance, mechanisms, and boundary conditions.
+
+Summary of Review
+The paper makes a clear protocol-level contribution by isolating the content and visibility of agents’ first public messages. Broad matched experiments and fixed-report interventions support the conclusion that evidence omission and exposed local answers both contribute to failures under distributed information. The headline gains primarily demonstrate recovery from a weak opinion-first channel: EFD does not outperform the cheaper centralized raw-context reference on average, and several absolute accuracy levels remain low. The primary comparison also bundles evidence-oriented extraction with delayed answer visibility, so the full gain cannot be attributed solely to ordering. Matched comparisons with the cited asymmetric-information and iterative-debate systems are absent.
+
+Strengths
+
+The hypothesis is explicitly scoped to settings where observations are complementary, opinion reports are insufficient, and the pooled solver remains capable. The formalization in “Problem and Diagnosis,” the XOR example, and the negative Schedule results in Table 6 delimit the intended claim rather than asserting universal benefit.
+
+The primary comparison controls several important confounders. Section “Experimental Setup” matches observations, models, seeds, calls, ballots, and aggregation, while Tables 1–2 show substantial gains across multiple model sizes and families under strict scoring; model choice, call count, and aggregation therefore do not readily explain the EFD–opinion differences.
+
+The mechanism analysis goes beyond endpoint accuracy. The fixed-report evidence deletion and label-injection interventions in Table 3, together with the private-precommitment and fact-complete controls in Table 5, provide direct evidence that both missing evidence and publicly visible decisions affect downstream ballots.
+
+The measurement protocol limits common evaluation artifacts. Standard EM/F1 or official programmatic evaluators are used, malformed outputs remain in the denominator, and paired item bootstraps and format-sensitive rescue audits are described in “Metrics and statistics” and “Mechanism Analysis.”
+
+Weaknesses
+
+The headline improvement is relative to opinion-first reporting rather than the strongest tested pooling alternative. The abstract reports a 12.7-point gain over opinion-first, but Table 2 reports pooled EFD–Raw at (-0.5) EM while raw context uses (N) calls rather than (2N); the shortlist diagnostic likewise gives 50.2 for EFD versus 99.5 for raw. Because the motivating privacy, tool-locality, and context constraints are not instantiated, the experiments demonstrate avoidance of opinion-first degradation rather than an accuracy or efficiency advantage for evidence pooling.
+
+The main experiment does not isolate the full headline gain as a pure ordering effect. Section “Evidence-First Deliberation” changes phase-one generation from answer-plus-rationale to decision-free evidence extraction, simultaneously altering the generation objective, message content, and answer visibility. Table 3’s fixed-evidence label intervention isolates only a 4.1/4.6-point effect, and the paper itself notes that this does not explain the full EFD–opinion gap; the central causal estimate is therefore the effect of a bundled communication contract.
+
+The comparative evaluation does not locate EFD against the closest cited systems. Related Work cites iAgents for asymmetric-information collaboration (Liu et al., 2024), and the introduction cites the iterative debate protocols of Du et al. (2024) and Liang et al. (2024), yet Tables 1–6 contain neither an iAgents/InfoNav comparison nor a matched EFD comparison against either full debate procedure. The paper isolates one protocol factor but does not establish its performance relative to these system-level alternatives.
+
+Several mechanism and transfer conclusions have limited generation-seed replication. Table 5 and Figure 4 explicitly use one seed, as do the 72B and Mistral multi-hop checks; item-bootstrap intervals quantify variation over benchmark items but not newly generated reports. This particularly limits the robustness of the generation-level answer-bearing controls used to support the public-exposure mechanism.
+
+Generalization to naturally occurring information partitions remains untested. The distributed QA setup deliberately places annotated support across roles, while the gold-blind variant still retains items according to whether the realized split crosses roles; the shortlist task is synthetic. These experiments test the mechanism under controlled stress conditions but do not establish its prevalence under organic tool, privacy, or organizational partitions.
+
+Suggestions for Improvement
+
+A systematic decomposition of EFD’s remaining errors would clarify where further protocol changes can help. The gaps between generated EFD and exact-report performance in the shortlist diagnostic, and between EFD and full-profile accuracy in Table 1, could be partitioned into memo omission, pooled-solver error, majority-aggregation loss, and malformed output.
+
+A compact factorial diagram should organize the mechanism controls by evidence-extraction instruction, private answer formation, public answer visibility, rationale visibility, and report regeneration. The current labels—“Fact+Ans.,” “Memo+Answer,” “evidence + local labels,” and “Private”—are distributed across Tables 3–5, forcing readers to reconstruct which factors each condition changes.
+
+The retrospective interaction audit should be visually and narratively separated from the direct causal evidence. Figure 2 establishes that agreement and oracle coverage can move oppositely, whereas the distributed-information interventions test the proposed explanation; making this distinction explicit would prevent the audit from being read as evidence for the mechanism itself.
+
+The matched baseline would be more precisely named “opinion-first report-and-vote.” Its independent second-stage ballots differ from the iterative peer-revision structure ordinarily denoted by multi-agent debate, including the cited protocols.
+
+Additional Details and Minor Issues
+
+Table 6’s displayed All row gives 24.6 for EFD and 26.0 for Opinion, implying (-1.4), whereas the caption reports (-1.9); any differing aggregation should be stated.
+
+Table 3 is not monotonic in memo count: two HotpotQA memos score 53.8 versus 52.6 for three. The evidence-dose conclusion should refer specifically to removing relevant evidence.
+
+The relationship between the 35,787 audited trajectories in the introduction and the 17,894 MAD trajectories in Figure 2 should be stated directly.
+
+The sufficiency condition should be qualified as equality almost surely under the joint distribution, or expressed as conditional independence.
+
+Table 1 would be easier to interpret with the applicable HiddenBench random-choice level, given opinion-based accuracies of 11.3–23.6.
+
+References
+
+Du, Y., Li, S., Torralba, A., Tenenbaum, J. B., & Mordatch, I. (2024). Improving factuality and reasoning in language models through multiagent debate. Proceedings of the 41st International Conference on Machine Learning, 11733–11763. (proceedings.mlr.press)
+
+Liang, T., He, Z., Jiao, W., Wang, X., Wang, Y., Wang, R., Yang, Y., Shi, S., & Tu, Z. (2024). Encouraging divergent thinking in large language models through multi-agent debate. Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, 17889–17904. (aclanthology.org)
+
+Liu, W., Wang, C., Wang, Y., Xie, Z., Qiu, R., Dang, Y., Du, Z., Chen, W., Yang, C., & Qian, C. (2024). Autonomous agents for collaborative task under information asymmetry. Advances in Neural Information Processing Systems, 37. (proceedings.neurips.cc)
+
+Content versus visibility, debate and routing baselines, budgeted raw, seed replication, and thinking mode
+Author Responseby Authors (xiang ding)25 Oct 2026, 08:20 (modified: 25 Oct 2026, 09:59)Program Chairs, Area Chairs, Senior Program Committee, AuthorsRevisions
+Response:
+Thank you for the detailed review (H/M = HotpotQA/MuSiQue, EM).
+
+Bundling. A 2×2 on stored Qwen3-14B reports (3 seeds):
+
+Answer hidden	Answer public
+Fact memo	52.4 / 26.9	47.4 / 21.1
+Opinion rationale	45.2 / 16.3	33.1 / 10.0
+Exposure hurts both message types, so decision visibility is separable from extraction.
+
+Debate and routing. Against multi-hop debate in which agents keep their passages (2N calls), EFD leads by 18.5–27.6 (Qwen3-8B/14B, Gemma3-12B); against iAgents-style request-then-answer routing (3N calls), by +21.9/+16.2 (Qwen3-14B).
+
+Raw. With every message capped at 32–128 tokens, EFD beats opinion-first and equally capped raw in all 12 cells.
+
+Seeds and thinking. Table 3 replicates over 3 seeds; with Qwen3 thinking on, EFD still beats Fact+Ans by +10.3 to +15.1.
+
+Tables 3 and 6. HotpotQA support never sits on role 3, so the third memo holds only distractors. Table 6's −1.9 pooled a 90-task 8B screen (14B alone: −1.4); we will fix it. We will rename the baseline "opinion-first report-and-vote".
+
+===== END ORIGINAL SOURCE TEXT =====
