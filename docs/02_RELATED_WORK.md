@@ -98,6 +98,16 @@
 - “外部同一 QA `Q,O_i` 可以无成本取得多个独立真实世界”——需要一致且许可的反事实或结构化任务。
 - “闭合是一种永久禁止输出 final answer”——错误；**已确定的局部子目标应该大胆完成，全局承诺必须与证据作用域匹配**。
 
+## 补充：此前讨论中有价值的理论和外部应用文献
+
+- **[Decentralized Data Reduction with Quantization Constraints](https://arxiv.org/abs/1306.1187)** (Xu, Zhu, Chen, 2013)：局部/全局充分性与通信量化限制会改变最佳数据缩减策略。帮助阐明“局部后验/局部统计看似足够，不代表联合任务充分”。
+- **[Multi-Agent Decision Making: A Blackwell’s Informativeness Approach](https://arxiv.org/abs/2605.06028)** (2026 preprint)：投票/辩论的信息结构与完整私有信息汇总的理论关系；支持完整数据参考线的意义，也提醒 Bayes 上界与有限 LLM 的实际效果不同。
+- **[Partial Evaluation and Automatic Program Generation](https://studwww.itu.dk/people/sestoft/pebook/)** (Jones, Gomard, Sestoft, 1993)：固定已知输入，残留依赖未知输入的程序，是“局部计算已完成、条件接口仍开放”的数学祖先；我们不必把整个 NLP 系统变成编译器，但应吸收这种准确区分。
+- **[TeamBench: Enforced Role Separation](https://arxiv.org/abs/2605.07073)** (2026 preprint)：用真正权限隔离而不仅是角色提示来测协作；与用户期待的“工具本地/不能集中 raw”更接近。基线仍可有同权限工具协调者。
+- **[CalBench: Coordination–Privacy Trade-offs](https://arxiv.org/abs/2605.09823)** (2026 preprint)：私有日历、多节点约束、可验证最优解及 DCOP 对照。若未来延伸到真实日程/隐私，这是比虚构 Schedule 更强的方向，但**本轮不应增加独立隐私新主线**。
+
+这几项用来**加深计算对象与边界条件**，不是自动转向 neuro-symbolic、database 或隐私优化论文。
+
 ## G. 推荐阅读顺序与后续维护规则
 
 **优先读全文而不仅摘要：**
