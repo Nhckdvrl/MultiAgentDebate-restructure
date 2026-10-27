@@ -1,0 +1,520 @@
+EFD — AAAI-27 ORIGINAL PAPER, TEXT EXTRACTION ONLY
+Title: Evidence before Opinions: Evidence-First Deliberation for Multi-Agent Decisions under Distributed Information
+Source: user-provided 9-page manuscript PDF; extracted text, not the PDF itself.
+Important: images/plots/equation layout may be imperfect. Do not quote this file as authoritative for exact figures. Verify original PDF or original LaTeX.
+Public archive included with user authorization; original anonymous-submission distribution notice remains part of extracted source.
+See docs/01_EFD_AND_REVIEW.md for concise reviewed interpretation.
+
+===== BEGIN EXTRACTED SOURCE =====
+
+<PARSED TEXT FOR PAGE: 1 / 9>
+                     Evidence before Opinions: Evidence-First Deliberation for
+                       Multi-Agent Decisions under Distributed Information
+
+                                                       Anonymous submission
+
+
+
+
+                             Abstract
+  Multi-agent language-model systems often expose local an-
+  swers before pooling complementary private evidence. We
+  identify a first-message bottleneck: a representation orga-
+  nized around a local decision can discard facts that are in-
+  conclusive alone but decisive for the team. We introduce
+  Evidence-First Deliberation (EFD), a minimal protocol that
+  shares decision-free evidence memos before collecting inde-
+  pendent ballots, and compare it with an opinion-first baseline
+  matched on observations, models, generation seeds, call bud-
+  get, and aggregation. On distributed HotpotQA and MuSiQue,
+  EFD improves exact match by 12.7 points across six models,
+  with an additional one-seed 72B check. On HiddenBench,
+  it outperforms this baseline in all 18 model–seed compar-
+  isons; the four-Qwen macro-average gain is 36.7 points. A
+  separate Mistral-Small-24B transfer gains 10.5 and 8.6 exact-
+  match points on HotpotQA and MuSiQue (one seed) and 57.4
+  points on HiddenBench (three seeds). A strictly scored non-
+  QA diagnostic reproduces the effect and permits direct in-
+  terventions on the amount of pooled evidence. Fixed-report,
+  private-precommitment, and same-extraction controls show
+  two contributors: answer-centered reports omit evidence, and
+  public answers interfere with later decisions even when evi-
+  dence instructions are matched and measured support is no
+  lower. EFD does not help when local answers are effective
+  summaries or when the pooled solver fails with complete in-
+  formation. These results identify decision visibility relative
+  to evidence pooling as a consequential protocol choice under
+  distributed information.
+
+
+                         Introduction
+Multi-agent systems often rely on complementary facts that
+are individually inconclusive but jointly decisive. Raw ob-
+servations may be private, tool-local, or too long to broad-
+cast, so agents communicate compressed representations. In              Figure 1: A simplified rendering of a real three-agent tra-
+such hidden profiles (Stasser and Titus 1985), a central pro-           jectory. Opinion-first reports omit complementary links and
+tocol choice is whether local decisions become public be-               leave the pooled chain incomplete; EFD shares decision-free
+fore complementary evidence is pooled. This choice is a                 evidence and preserves the chain, yielding a correct major-
+long-standing concern of multi-agent decision making, and               ity. Observations, model, generation seeds, calls, ballots, and
+language-model agents now make it testable at scale.                    aggregation are matched.
+   Many debate protocols first expose each agent’s partial-
+view answer and rationale, then let peers revise (Du et al.
+2024; Liang et al. 2024). They vary participants, rounds, and           assumption is that a local-decision representation preserves
+aggregation while leaving this ordering implicit. The implicit          everything the team will later need, and it is usually untested.
+                                                                          It can fail even in the simplest distributed problem. If two
+This is an anonymized submission for review purposes only. Dis-         agents observe independent bits and the team must predict
+tribution, citation, or public sharing of this manuscript is strictly
+prohibited. Copyright and publication details will appear in the
+final version if accepted.
+<PARSED TEXT FOR PAGE: 2 / 9>
+their XOR, neither bit supports a better-than-chance local an-     (Choi, Zhu, and Li 2025) and Voting-or-Consensus (Kaes-
+swer, so a fixed local decision carries no information about       berg et al. 2025) compare interaction and aggregation; other
+the target, even though communicating the two observations         work preserves diversity, communicates confidence, or treats
+solves the task exactly. The issue generalizes: facts that are     debate as test-time scaling (Nguyen et al. 2026; Zhu et al.
+irrelevant to a local decision can become decisive after an-       2026; Yang et al. 2025). EFD fixes topology, rounds, partici-
+other agent’s evidence arrives. We call the resulting loss at      pants, and aggregation to study decision visibility relative to
+the first shared representation the first-message bottleneck.      evidence pooling. Herding and dependence are known (Liu
+   We first test whether this failure occurs in practice. Across   et al. 2026); we ask what disappears before convergence.
+35,787 trajectories from iterative consensus and standard             LLM multi-agent frameworks assign roles and orches-
+debate, communication raises agreement but often deletes           trate conversations (Wu et al. 2024; Hong et al. 2024; Li
+initially correct candidates (Figure 2). An official Debate-       et al. 2023), and panels can score generations (Chan et al.
+or-Vote reproduction (Choi, Zhu, and Li 2025) shows the            2024). They leave open what the first message should con-
+same pattern. Under distributed observations, opinion mes-         tain. Single-agent chain-of-thought, self-consistency, search,
+sages also omit supporting facts and fall far below a full-        and revision (Wei et al. 2022; Wang et al. 2023; Yao et al.
+information reference.                                             2023; Madaan et al. 2023; Shinn et al. 2023) do not di-
+   We test the reverse ordering. Evidence-First Deliberation       rectly address pooling complementary private observations.
+(EFD) first collects decision-free factual memos, then obtains     We instead study what agents reveal before aggregating in-
+independent ballots and a fixed majority. It has no recovery       dependent judgments (Surowiecki 2004).
+path or learned control, keeping the ordering choice testable.        iAgents and InformativeBench (Liu et al. 2024) study
+   We test EFD on HiddenBench (Li, Naito, and Shirado              collaboration under information asymmetry; HiddenBench
+2025), distributed HotpotQA and MuSiQue, and Informa-              (Li, Naito, and Shirado 2025) isolates hidden-profile de-
+tiveBench Schedule (Liu et al. 2024). A synthetic distributed      cisions. InfoDelphi jointly changes evidence routing, ra-
+set-intersection diagnostic tests the same mechanism out-          tionale exchange, and confidence-weighted aggregation (Li
+side QA with exact programmatic scoring. The main grid             et al. 2026), while deliberative-collaboration work formal-
+evaluates six open models and three generation seeds; sepa-        izes partial observability (Wang et al. 2026). Blackwell-
+rate 72B and Mistral-Small-24B checks test scale and family        informativeness analysis bounds voting and debate by pooled
+transfer. Fixed-report and generation-level controls examine       private information (Zhang et al. 2026). We do not claim nov-
+evidence omission, exposed labels, private precommitment,          elty for distributed evidence or for the general intuition that
+aggregation, and prompt wording. Schedule tests settings in        groups should pool information. We instead hold information
+which evidence-first communication is not expected to help.        allocation and the decision rule fixed, intervene on the first
+   This paper makes three contributions:                           public message, and measure both retained evidence and
+                                                                   downstream decisions. Fact-complete and same-extraction
+1. We identify and operationalize a first-message bottleneck:      answer-bearing controls test whether evidence prompting
+   interaction can raise agreement while deleting correct          alone explains the result.
+   candidates, and answer-centered first reports can discard
+   complementary evidence. This links a retrospective audit                        Problem and Diagnosis
+   of 35,787 trajectories to directly measurable message loss
+   under distributed information.                                  Distributed Decisions
+2. We formulate evidence-before-public-decision ordering           Let S be a latent state, Q a question about that state, and Y =
+   as a protocol principle and instantiate it with EFD. The        d(S, Q) the desired team decision. Agent i ∈ {1, . . . , N }
+   matched comparison changes the phase-one communica-             observes only Oi . The observations may be complemen-
+   tion contract while holding observations, models, gener-        tary: no individual Oi need identify Y , although their joint
+   ation seeds, calls, ballots, and aggregation fixed, making      information may do so. An opinion-first channel Gi sam-
+   the ordering choice directly testable rather than hiding it     ples Zi = (Ai , Ri ) ∼ Gi (· | Q, Oi ), where Ai is a pro-
+   inside a larger orchestration system.                           visional answer and Ri its rationale. EFD instead samples
+                                                                   a decision-free memo Mi ∼ Hi (· | Q, Oi ) from evidence
+3. Across four benchmarks, a non-QA diagnostic, and three          channel Hi and delays every communicated answer until
+   model families, fixed-report and generation-level inter-        after M1:N = (M1 , . . . , MN ) is pooled.
+   ventions identify roles for both evidence omission and             Let tpool be the first protocol step at which messages from
+   publicly exposed decisions. The same experiments give a         complementary roles are jointly available to a team decision,
+   calibrated boundary: EFD helps when private views are           and let tpublic be the first step at which a locally formed
+   complementary, local decisions are lossy, and the pooled        answer enters the shared team state. Opinion-first protocols
+   task remains solvable.                                          allow tpublic ≤ tpool . EFD enforces the ordering
+
+                      Related Work                                                        tpool < tpublic .
+Multi-agent debate studies when and with whom agents ex-           This timing constraint does not claim that evidence memos
+change answers (Du et al. 2024; Liang et al. 2024; Smit et al.     are lossless. It isolates whether a public local decision shapes
+2024; Khan et al. 2024), extending debate under limited over-      the first shared representation before complementary evi-
+sight (Irving, Christiano, and Amodei 2018). Debate-or-Vote        dence can be combined.
+<PARSED TEXT FOR PAGE: 3 / 9>
+   Under a fixed model, prompt, and generation proce-                                More agreement, fewer correct candidates
+dure, each phase-one message is sampled from a channel
+conditioned on (Q, Oi ). Let O1:N = (O1 , . . . , ON ) and                                Agreement    System oracle   Majority accuracy
+                                                                                     95                                          +6.5
+Z1:N = (Z1 , . . . , ZN ). We call the opinion channel statis-
+tically sufficient for Y relative to O1:N (Cover and Thomas                          90
+
+
+
+
+                                                                     Questions (%)
+2006) when
+                                                                                     85
+            P (Y | Q, O1:N ) = P (Y | Q, Z1:N ).
+                                                                                     80
+A representation organized around the local posterior P (Y |
+Q, Oi ) need not preserve distinctions required by the joint                         75
+                                                                                                                                 -4.6
+posterior.
+                                                                                     70
+   This view yields three conditions for an evidence-first pro-
+tocol to help. First, observations must be complementary: an-                        65
+other role can make a locally marginal fact decision-relevant.                            Initial        Round 1           Terminal
+Second, the opinion channel must be insufficient: its answer-
+centered representation omits or distorts some of those dis-
+tinctions. Third, the pooled decision must remain solvable:         Figure 2: Round-wise dynamics over 17,894 MAD trajec-
+preserving evidence cannot repair a downstream solver that          tories in 44 model–dataset groups. Agreement rises by 6.5
+fails even with complete information. These conditions de-          points, while system-oracle coverage falls by 4.6 and majority
+fine the scope of the paper. HiddenBench, distributed multi-        accuracy remains flat. Bands show 95% bootstrap intervals
+hop QA, and the set-intersection diagnostic test the first two;     clustered by model–dataset group. Exact protocol-level re-
+centralized context tests the third; Schedule supplies cases        sults appear in the Supplement.
+where local summaries are effective or the pooled problem
+remains unsolved.
+   Consider two independent uniform bits O1 , O2 and target         agreement can coincide with the loss of initially correct can-
+Y = O1 ⊕ O2 . From either private bit, both answers are             didates.
+equally likely; under a fixed Bayes-optimal tie rule, both lo-
+cal answers are constant and contain zero information about         The Opinion Bottleneck under Asymmetric
+Y . Pooling the two observations solves the task exactly. More      Information
+generally, if two private states induce the same local action       Distributed observations make the missing-information
+but different team-optimal actions after conditioning on an-        question observable. On HiddenBench, a Qwen3-14B agent
+other observation, the local action need not preserve the infor-    given every private profile reaches 84.6% accuracy, whereas
+mation required by the team decision. Natural-language ra-          full-contact opinion-first debate averages 18.5% over three
+tionales may recover some discarded information, so whether         seeds. On distributed HotpotQA and MuSiQue, opinion re-
+this theoretical failure occurs in real protocols is an empirical   ports retain fewer official supporting-fact tokens than evi-
+question rather than an assumption.                                 dence memos and often replace a missing link with an un-
+                                                                    supported local answer. A deterministic case-selection audit
+Agreement Can Rise as Correct Candidates                            illustrates the failure: for a MuSiQue question, one role re-
+Disappear                                                           ports that Michael J. Fox voices Chance and another reports
+                                                                    that Claudia Wells played his girlfriend in Back to the Fu-
+The iterative-consensus audit spans 11 task families and
+                                                                    ture. Evidence memos preserve both links and yield Claudia
+44 dataset–model groups drawn from Qwen2.5 and Qwen3.
+                                                                    Wells; all three opinion reports instead declare the question
+From the first to terminal round, agreement rises from 78.6%
+                                                                    unanswerable.
+to 90.1%, correctness correlation rises from 0.75 to 0.90, and
+                                                                       This motivates a direct intervention. We do not attempt
+the effective number of independent votes falls to 1.07. Mean-
+                                                                    to select better debaters or repair a bad answer after conver-
+while, the team oracle, the fraction of tasks where at least one
+                                                                    gence. We change what is communicated before any pub-
+agent is correct, falls from 77.0% to 73.8%. Oracle is a diag-
+                                                                    lic opinion exists, then ask whether the resulting decisions,
+nostic upper bound, not team accuracy. Its decline identifies
+                                                                    retained support, and controlled responses match the suffi-
+deleted candidates; the decision-level evidence is that MAD
+                                                                    ciency diagnosis.
+majority accuracy also fails to improve (70.7 to 69.9). Ora-
+cle falls in 41/44 consensus and 42/44 MAD model-dataset
+groups. Cross-family and fresh-seed splits replicate the pat-                                 Evidence-First Deliberation
+tern (Supplement).                                                  EFD takes a question Q and private observations
+   We also reproduce the open Debate-or-Vote implementa-            O1 , . . . , ON . It uses the same model for every agent and
+tion without changing its protocol. On 300 CommonsenseQA            has two semantic phases (Figure 1). The protocol has three
+examples, terminal debate changes accuracy by −1.0 points           defining properties: phase-one messages contain no public
+(CI [−4.3, +2.7]) and oracle by −7.7. On 300 GSM8K ex-              decision; evidence is pooled before any answer enters the
+amples, accuracy falls by −4.3 ([−8.0, −0.7]) and oracle by         shared team state; and post-pooling ballots do not observe
+−8.0. These homogeneous-input tasks only show that higher           one another. The memo prompt below is one implementation
+<PARSED TEXT FOR PAGE: 4 / 9>
+of the first property, not the definition of the broader ordering   Qwen/Qwen2.5-72B-Instruct, also with three seeds.
+principle.                                                          The 72B model adds a one-seed multi-hop check. Separate
+                                                                    Mistral-Small-24B-Instruct-2501                      (Mistral
+Phase 1: evidence reporting. In parallel, agent i receives          AI Team 2025) runs use one multi-hop seed and three
+only (Q, Oi ) and returns Mi . The core contract is: “Report        HiddenBench seeds; they are not added post hoc to the
+every fact from your passages that may help answer the ques-        pooled grid. The shortlist diagnostic uses Qwen3-8B with
+tion. Preserve names, dates, numbers, and relations exactly.        three seeds; other transfer checks appear in the Supplement.
+Do not propose or mention a final answer.” The opinion              We use temperature 0.7, top-p 0.9, and disable Qwen3
+baseline instead requests a best answer and rationale from          thinking. Malformed outputs are not retried and score as
+the same passages. Complete prompts appear in the Supple-           incorrect.
+ment.
+Phase 2: independent decision. Each of N decision                   Metrics and statistics. HotpotQA and MuSiQue use stan-
+agents receives Q and the ordered pool M = (M1 , . . . , MN ),      dard normalized exact match and token-level F1 computed
+but not another decision agent’s ballot. It emits one answer        from raw predictions. HiddenBench and Schedule use their
+in a fixed JSON field. A deterministic normalized majority          official option and programmatic evaluators. The shortlist di-
+returns the final prediction; ties use the first ballot.            agnostic requires an exact candidate identifier. No free-text
+   EFD makes 2N calls, N reports and N ballots, match-              judgment enters scoring, and empty or malformed outputs
+ing opinion-first debate. The primary matched comparison            stay in the denominator and count as wrong. Within a model–
+changes the phase-one message contract from an answer-and-          dataset cell, we average repeated seeds by item before a paired
+rationale report to a decision-free evidence memo. Public           item bootstrap. For pooled model-grid effects, we addition-
+discussion may still follow the first ballots, and an ablation      ally average model-specific differences within each dataset
+tests one such round. The Supplement gives the algorithm,           item before resampling items. We report 95% intervals, exact
+prompts, parsing, tie rule, and seed derivation.                    discordant-pair sign tests, and rescue and corruption counts.
+                                                                    A verbose prediction can contain the gold string yet miss ex-
+                                                                    act match, so we add a conservative audit that deletes every
+                  Experimental Setup                                such case; it never replaces EM or F1 (Supplement).
+Tasks. We evaluate on four benchmarks that span native
+and constructed distributed information. HiddenBench con-           Baselines. The primary comparison is opinion-first debate:
+tains all 65 official hidden-profile decisions, each already        the N agents each write one local answer with a rationale, and
+partitioned so that no role sees every fact; we use 12 agents       N decision agents then read all of them and cast ballots, for
+arranged into three role-complete committees. Distributed           2N calls in total. EFD replaces the phase-one answer-and-
+HotpotQA and MuSiQue (Yang et al. 2018; Trivedi et al.              rationale task with evidence reporting while retaining the
+2022) adapt two standard multi-hop datasets to the distributed      same 2N call budget. On HiddenBench, both protocols run
+setting: for each of 1,000 fixed validation items per dataset,      the same 12 agents split into three role-complete committees
+we place the official supporting paragraphs across at least         whose committee verdicts are combined by the same major-
+two of three agents and fill the remaining roles with length-       ity rule. The remaining comparisons are a local vote taken
+balanced distractors, so that the annotated supporting chain        before any communication, centralized raw information in
+spans evidence held by different agents. Assignment reads           which each decision agent reads every uncompressed obser-
+the support annotations but never the answer string. To test        vation using N calls, HiddenBench full-contact debate, and
+whether support-aware placement drives the result, a disjoint       the private-precommitment and fact-complete opinion chan-
+1,000-item gold-blind control per dataset assigns paragraphs        nels. Aggregation, option-visibility, prompt, coverage, and
+without reading support labels, then retains items whose real-      post-evidence controls appear below or in the Supplement.
+ized split spans at least two roles. InformativeBench Schedule
+supplies 900 official tasks scored by programmatic rules and                                  Results
+serves as a negative boundary. A separate distributed short-
+list diagnostic gives three departments private candidate sets      Main Results
+with one unique three-way intersection and pairwise-overlap
+distractors. It is synthetic rather than a benchmark, but re-       On HiddenBench (Table 1), EFD wins every model–seed
+moves open-answer QA and permits exact control over evi-            comparison; per-model gains span 20.0–62.1 points and the
+dence coverage. The Debate-or-Vote reproduction uses 300            four-Qwen macro-average is +36.7 ([28.3, 45.0]). The largest
+CommonsenseQA and 300 GSM8K examples for the inter-                 gap occurs on 58 four-role tasks. There, matched Qwen3-
+action audit only. All pools, item ids, and observation assign-     32B controls show that full opinions raise agreement while
+ments were fixed before inference and retained for release.         lowering ballot-oracle coverage; masking peer choices but
+                                                                    retaining rationales performs better than exposing choices
+Models    and     inference. The   multi-hop grid                   alone (Supplement). The seven three-role tasks do not col-
+uses              Qwen/Qwen3-{4B,8B,14B,32B},                       lapse, so the magnitude is benchmark-conditional, not a scale
+Qwen/Qwen2.5-7B-Instruct (Qwen Team 2025,                           trend. Qwen2.5-72B and Gemma3-12B replicate the direc-
+2024), and google/gemma-3-12b-it (Gemma                             tion. Mistral-Small-24B reaches 84.6 versus 27.2 over three
+Team 2025), each with three seeds. HiddenBench                      seeds, a paired +57.4 ([46.2, 68.2]), while remaining below
+uses the latter five models except Qwen3-4B, plus                   its 93.8 full-profile reference.
+<PARSED TEXT FOR PAGE: 5 / 9>
+Figure 3: Strict EM on distributed HotpotQA (left) and MuSiQue (right), with 1,000 fixed items per cell. Bars show three-seed
+means and standard deviations. EFD and opinion-first use matched calls; the raw reference supplies every decision agent with
+all uncompressed passages.
+
+
+       Model           EFD     Opinion    Full   Profile          Mechanism Analysis
+       Qwen3-32B        75.4      13.3    12.3     83.6           The framing gives three predictions: deleting or mismatch-
+       Qwen3-14B        55.4      23.6    18.5     84.6           ing stored evidence should hurt; adding public labels to fixed
+       Qwen3-8B         44.1      11.3    12.8     75.4           evidence should hurt more than forming an unshared answer;
+       Qwen2.5-7B       36.9      16.9    12.3     75.9           and changing aggregation or adding post-pooling discussion
+       Qwen2.5-72B      72.8      18.5    19.0     84.6           should not remove the gain. We test these without regenerat-
+       Gemma3-12B       70.2      12.3    18.0     84.6           ing controlled messages.
+Table 1: HiddenBench accuracy (%) over three seeds and all        Non-QA diagnostic. On 1,000 exact set-intersection
+65 tasks. Opinion: matched role-complete committee; Full:         tasks, three-seed Qwen3-8B EFD/opinion/raw accuracy is
+all-to-all opinion debate; Profile: one agent reads every pro-    50.2/13.9/99.5; EFD−Opinion is +36.3 points ([32.9, 39.6]).
+file. Across the four Qwen models, EFD−Opinion is +36.7           A one-seed Gemma3-12B check remains positive (+18.7
+([28.3, 45.0], clustered by task ID).                             [15.7, 21.8]). With fixed exact shortlists, one, two, and three
+                                                                  reports score 13.8/32.7/99.4. Adding local labels (98.5%
+                                                                  valid) to the same evidence lowers accuracy to 86.6, whereas
+   Strict open-answer results agree (Figure 3, Table 2).          cross-task reports score 4.4. This synthetic test isolates evi-
+Across six seeded models, EFD gains +12.7 EM                      dence dose and label exposure outside QA; it does not mea-
+([11.7, 13.7]) and +13.8 F1 ([12.9, 14.6]); all leave-one-        sure deployment performance.
+model and leave-one-dataset intervals are positive. Eleven of        Communication audits connect outcomes to retained in-
+twelve cell-level EM intervals exclude zero. A one-seed 72B       formation. Evidence memos retain more official support than
+check gains 9.9/11.7 EM, and disjoint gold-blind assignment       plain opinions (Table 4). Fact-complete opinions retain still
+gains +18.3 ([16.3, 20.4]), excluding support-aware place-        more but trail EFD by 6.6–15.1 EM (Table 5). We treat lex-
+ment as a necessary explanation. The separate Mistral run         ical recall as descriptive and use fixed-report interventions
+gains 10.5 EM ([7.4, 13.6]) on HotpotQA and 8.6 ([5.6, 11.6])     for the controlled tests.
+on MuSiQue.                                                       Evidence preservation. Reducing three pooled memos to
+   EFD and raw context differ by −0.5 EM pooled, but raw          one lowers EM by 10.8 points on HotpotQA and 7.8 on
+costs only N rather than 2N calls and is preferable when          MuSiQue. On the 494 MuSiQue items whose gold chain
+centralization is feasible. Against call-matched opinion-first,   spans all three roles, restoring the third memo adds 4.3 EM
+EFD uses 3–16% fewer total tokens in Qwen cells but               ([1.4, 6.9]). Cross-question permutation collapses accuracy
+12–14% more with Gemma. We treat raw as a complete-               to near zero, so report volume alone carries no signal.
+information reference, not an upper bound.
+   Qwen3-4B gains only 4.6/5.1 EM, while 8B–32B gains             Public decision exposure. Adding stored local-answer la-
+16.2–19.3 in all six cells, consistent with preserved informa-    bels to otherwise identical memos reduces EM by 4.1/4.6
+tion mattering once the pooled solver can use it. EFD trails      points, with both intervals below zero. Exposing local an-
+raw at 32B and 72B, revealing residual memo compression.          swer labels contributes to the performance drop, but does
+Gemma instead benefits from memo compression relative to          not explain the full gap between EFD and opinion-first.
+raw context.                                                        Manual inspection illustrates both effects. On 13.5% of
+<PARSED TEXT FOR PAGE: 6 / 9>
+                                                      EFD              Opinion           Raw
+           Model                     Dataset       EM            F1   EM        F1    EM       F1    ∆EM (EFD−Op.) [95% CI]
+           Qwen3-4B                  HotpotQA      45.8     61.4      41.1    55.0    47.0   62.3           +4.6 [+2.0, +7.3]
+           Qwen3-4B                  MuSiQue       26.0     36.8      20.9    29.6    22.3   33.2           +5.1 [+2.7, +7.6]
+           Qwen2.5-7B                HotpotQA      51.4     64.2      43.6    56.5    52.6   66.5          +7.8 [+5.5, +10.2]
+           Qwen2.5-7B                MuSiQue       26.6     36.5      25.6    35.3    28.8   39.6           +1.0 [−1.3, +3.4]
+           Qwen3-8B                  HotpotQA      51.1     65.5      32.0    46.1    53.3   68.0         +19.1 [+16.4, +21.7]
+           Qwen3-8B                  MuSiQue       28.5     40.8      10.9    18.7    29.8   41.5         +17.7 [+15.2, +20.1]
+           Qwen3-14B                 HotpotQA      52.4     67.6      33.1    47.6    53.8   69.6         +19.3 [+16.6, +22.0]
+           Qwen3-14B                 MuSiQue       26.9     38.2      10.0    17.0    28.3   40.4         +17.0 [+14.6, +19.3]
+           Qwen3-32B                 HotpotQA      55.9     69.6      38.6    53.5    59.5   74.1         +17.2 [+14.9, +19.6]
+           Qwen3-32B                 MuSiQue       32.0     44.1      15.8    25.1    41.4   53.0         +16.2 [+14.0, +18.4]
+           Gemma3-12B                HotpotQA      56.5     71.5      41.9    59.0    49.5   65.3         +14.6 [+12.0, +17.4]
+           Gemma3-12B                MuSiQue       36.2     49.4      23.5    36.9    29.1   42.4         +12.7 [+10.0, +15.4]
+           Qwen2.5-72B†              HotpotQA      61.4     72.9      51.5    64.6    63.1   74.9           +9.9 [+7.4, +12.4]
+           Qwen2.5-72B†              MuSiQue       41.7     53.3      30.0    41.6    44.1   55.5          +11.7 [+9.2, +14.3]
+           Qwen3-8B (blind)          HotpotQA      52.1     66.7      31.2    45.3    52.1   67.4         +20.9 [+17.9, +23.9]
+           Qwen3-8B (blind)          MuSiQue       25.0     35.9       9.3    17.6    27.0   37.9         +15.7 [+13.0, +18.5]
+           Pooled (Qwen grid)        both                                                                 +12.5 [+11.5, +13.5]
+           Pooled (all six models)   both                                                                 +12.7 [+11.7, +13.7]
+
+Table 2: Distributed multi-hop QA with 1,000 fixed items per row. Main-grid EM/F1 are three-seed means; intervals cluster
+within item. †: one-seed check; Blind: gold-blind assignment; Raw: uncompressed passages. Pooled EFD−Opinion is +12.7
+EM and +13.8 F1; EFD−Raw is −0.5 EM.
+
+
+    Condition                        HotpotQA      MuSiQue                       Phase-one message              HotpotQA      MuSiQue
+    Complete evidence (3 memos)             52.6          26.5                   Fact-complete opinion                81.1         50.6
+    First two memos                         53.8          26.2                   Evidence memo (EFD)                  64.5         33.7
+    One memo                                41.8          18.7                   Opinion (answer + rationale)         53.6         28.9
+    Cross-question shuffle                   6.4           0.2
+    Evidence + local labels                 48.5          21.9               Table 4: Official supporting-token recall (%) of each phase-
+    Labels only                             39.4          13.2               one message on Qwen3-14B. Fact-complete opinions keep
+                                                                             the most support text but do not match EFD accuracy (Ta-
+Table 3: Fixed-report interventions (Qwen3-14B, 1,000 items                  ble 5), so support retention alone does not drive the result.
+per dataset, EM). Every condition reuses the same stored
+memos and per-item ballot seeds; no report is regenerated.
+On the 494 MuSiQue items whose official support spans all
+three roles, complete evidence beats the first two memos by                  retaining every corruption leaves a non-negative net in all
++4.3 EM ([1.4, 6.9]).                                                        twelve model–dataset cells. Restricting Qwen3-14B to non-
+                                                                             degenerate opinion predictions still yields 17.8/13.9 EM
+                                                                             gains; tested tie rules differ by at most 0.1 EM. All mal-
+                                                                             formed outputs remain wrong without retry. These checks
+MuSiQue items, every opinion report declares the question
+                                                                             make abstention, parsing, and the tested aggregation choices
+unanswerable although the distributed passages contain the
+                                                                             unlikely explanations for the main effect.
+full chain. In label-injection failures, ballots move toward a
+locally supported wrong entity after it becomes public. Fig-
+                                                                             Private formation versus public exposure. Private pre-
+ure 1 shows the corresponding evidence-composition case.
+                                                                             commitment changes EFD by −5.2/ + 0.9 EM on Hot-
+Aggregation and post-pooling discussion. HiddenBench                         potQA/MuSiQue (Table 5), so forming an unshared opinion
+aggregation, option-visibility, and prompt controls do not                   is not the general failure. Fact-complete opinions retain the
+account for the gain (Figure 4). A public post-evidence re-                  most support but remain 15.1/9.1 behind EFD, with Qwen3-
+vision reaches 58.5 versus 56.9 before revision. With stored                 8B and Gemma3-12B replication. A stricter Memo+Answer
+reports and ballot seeds fixed, complete role coverage raises                control copies EFD’s extraction clause and appends only a
+evidence-report accuracy from 24.6 to 55.4 but opinion-                      public answer, without a rationale. Despite higher support
+report accuracy only from 16.9 to 24.6. A decision group                     recall, it trails EFD by 13.5/7.1 EM; Mistral-Small-24B re-
+cannot recover from its messages a fact absent from every                    produces smaller gaps of 4.6/4.5, with all four intervals above
+report.                                                                      zero. Evidence prompting recovers part of the deficit but does
+   A conservative output audit gives the same conclusion                     not explain EFD.
+(Supplement). Removing every format-sensitive rescue and                        These controls implicate both evidence omission and ex-
+<PARSED TEXT FOR PAGE: 7 / 9>
+                                 Accuracy versus private-role coverage                                 Difficulty   EFD    Opinion   Raw       n
+                                                                                                       Easy         41.0      47.3   41.3    300
+ HiddenBench accuracy (%)
+
+                                        Evidence reports
+                            60                                                                         Medium       32.7      30.7   14.7    300
+                                        Opinion reports                            +30.8               Hard          0.0       0.0    0.3    300
+                            50                                                                         All          24.6      26.0   18.8    900
+                            40
+                                                                                             Table 6: InformativeBench Schedule with official pro-
+                            30                                                               grammatic scoring. Overall EFD−Opinion is −1.9
+                                                                                   +7.7      ([−4.9, +1.0]), clustered by source schedule.
+                            20
+
+                            10                                                               When Evidence-First Helps
+                                   48                      74                  100
+                                                                                             EFD is not uniformly superior (Table 6). On easy schedules,
+                                        Mean private-role coverage (%)                       a local plan already serves as an effective summary and
+                                                                                             opinion-first wins by 6.3 points. On medium tasks EFD gains
+Figure 4: HiddenBench role-coverage intervention (Qwen3-                                     2.0 points, while on hard tasks every method is near zero,
+14B, 65 tasks, one seed). Stored reports and ballot seeds are                                including centralized raw context. This matches the three
+reused; only distinct private-role coverage changes. Bands                                   conditions identified above: evidence-first helps only when
+show 95% item-bootstrap intervals. Complete versus low                                       information is complementary, local decisions are lossy, and
+coverage yields +30.8 for evidence reports and +7.7 for                                      the pooled solver can use what is preserved. Comparing local
+opinion reports; exact conditions and intervals appear in the                                and full-information performance can help diagnose whether
+Supplement.                                                                                  a task resembles the distributed-information setting studied
+                                                                                             here.
+Model                                    Data    EFD       Private     Fact+Ans.   Opinion   Implications for Multi-Agent Systems
+Qwen3-8B                                 H        50.7          48.1        38.2      31.7   Multi-agent protocols should be evaluated by what survives
+Qwen3-8B                                 M        29.1          28.4        17.0      11.4
+                                                                                             their first shared message, not only final accuracy. Evidence-
+Qwen3-14B                                H        52.6          47.4        37.5      33.4
+Qwen3-14B                                M        26.5          27.4        17.4       9.7   before-public-decision remains compatible with later rout-
+Gemma3-12B                               H        56.5          53.5        45.7      41.9   ing, weighting, or discussion because it constrains when a
+Gemma3-12B                               M        36.3          33.0        29.7      22.8   decision becomes shared, not what follows.
+
+Table 5: Generation-level message controls (strict EM; 1,000                                                        Limitations
+paired items per row, seed 20260717). Private: form an un-                                   EFD assumes faithful verbalization and enough context to
+shared answer, then share a decision-free memo. Fact+Ans.:                                   pool memos. When observations can be centralized, cheaper
+share requested facts, an answer, and a rationale. H/M de-                                   raw pooling is preferable; we do not instantiate privacy or
+note HotpotQA/MuSiQue. EFD−Fact+Ans. intervals ex-                                           tool-local constraints in deployment. The multi-hop grid is
+clude zero in all rows (Supplement).                                                         a targeted distributed-support stress test, and gold-blind as-
+                                                                                             signment does not remove its selection criterion. The non-
+                                                                                             QA shortlist is exactly controlled but synthetic. Model cov-
+posed decisions without isolating a single token-level cause.                                erage is limited to open-weight Qwen, Gemma, and Mistral;
+A public revision after evidence pooling does not reduce ac-                                 team size is fixed, and only one post-evidence discussion
+curacy in the tested control, so EFD remains compatible with                                 round is tested. HiddenBench role count is confounded with
+later discussion.                                                                            task identity, so its 32B gap does not establish monotone
+                                                                                             scaling. Fact-complete messages jointly change labels, ratio-
+Qualitative Analysis                                                                         nales, and length; the same-extraction control narrows but
+A HotpotQA item asks which Granite Flats role the star of                                    does not identify a token-level cause, and lexical recall can
+Lean on Pete is known for (gold: Timmy Sanders). One role                                    miss paraphrases. EFD targets complementary private obser-
+identifies Charlie Plummer as the film’s star; another links                                 vations, not negotiation, tool use, or homogeneous sampling.
+him to Timmy Sanders beside the distractor Chief of Police
+John Sanders. Opinion reports fail to connect the observa-                                                          Conclusion
+tions, and ballots move toward the exposed distractor. Memos                                 Later communication cannot recover evidence that is ab-
+preserve both links and yield Timmy Sanders, with 85.7%                                      sent from every phase-one report. Across hidden-profile and
+versus 22.9% support recall. Raw context also selects the                                    multi-hop decisions, strict scoring and controlled message in-
+distractor, illustrating why it is not a pointwise upper bound.                              terventions support a scoped conclusion: when private views
+The deterministic selection rule and another case are in the                                 are complementary and the pooled task is solvable, evidence
+Supplement; controlled interventions, not examples, support                                  should enter the shared channel before local decisions be-
+the mechanism claim.                                                                         come public.
+<PARSED TEXT FOR PAGE: 8 / 9>
+                       References                                Liu, W.; Wang, C.; Wang, Y.; Xie, Z.; Qiu, R.; Dang, Y.; Du,
+Chan, C.-M.; Chen, W.; Su, Y.; Yu, J.; Xue, W.; Zhang,           Z.; Chen, W.; Yang, C.; and Qian, C. 2024. Autonomous
+S.; Fu, J.; and Liu, Z. 2024. ChatEval: Towards Better           Agents for Collaborative Task under Information Asymme-
+LLM-based Evaluators through Multi-Agent Debate. In The          try. In Advances in Neural Information Processing Systems.
+Twelfth International Conference on Learning Representa-         ArXiv:2406.14928.
+tions. ArXiv:2308.07201.                                         Madaan, A.; Tandon, N.; Gupta, P.; Hallinan, S.; Gao, L.;
+                                                                 Wiegreffe, S.; Alon, U.; Dziri, N.; Prabhumoye, S.; Yang,
+Choi, H. K.; Zhu, X.; and Li, Y. 2025. Debate or Vote:           Y.; Gupta, S.; Majumder, B. P.; Hermann, K.; Welleck, S.;
+Which Yields Better Decisions in Multi-Agent Large Lan-          Yazdanbakhsh, A.; and Clark, P. 2023. Self-Refine: Itera-
+guage Models? In Advances in Neural Information Process-         tive Refinement with Self-Feedback. In Advances in Neural
+ing Systems.                                                     Information Processing Systems. ArXiv:2303.17651.
+Cover, T. M.; and Thomas, J. A. 2006. Elements of Informa-       Mistral AI Team. 2025. Mistral-Small-24B-Instruct-2501
+tion Theory. Wiley-Interscience, 2nd edition.                    Model Card. Hugging Face model release.
+Du, Y.; Li, S.; Torralba, A.; Tenenbaum, J. B.; and Mordatch,    Nguyen, M.; Nguyen, A.; Nguyen, D.; Venkatesh, S.; and
+I. 2024. Improving Factuality and Reasoning in Language          Le, H. 2026. Hear Both Sides: Efficient Multi-Agent Debate
+Models through Multiagent Debate. In Proceedings of the          via Diversity-Aware Message Retention. arXiv:2603.20640.
+41st International Conference on Machine Learning.               Qwen Team. 2024.              Qwen2.5 Technical Report.
+Gemma Team. 2025.           Gemma 3 Technical Report.            arXiv:2412.15115.
+arXiv:2503.19786.                                                Qwen Team. 2025.               Qwen3 Technical Report.
+Hong, S.; Zhuge, M.; Chen, J.; Zheng, X.; Cheng, Y.; Zhang,      arXiv:2505.09388.
+C.; Wang, J.; Wang, Z.; Yau, S. K. S.; Lin, Z.; Zhou, L.; Ran,   Shinn, N.; Cassano, F.; Berman, E.; Gopinath, A.;
+C.; Xiao, L.; Wu, C.; and Schmidhuber, J. 2024. MetaGPT:         Narasimhan, K.; and Yao, S. 2023. Reflexion: Language
+Meta Programming for a Multi-Agent Collaborative Frame-          Agents with Verbal Reinforcement Learning. In Advances in
+work. In The Twelfth International Conference on Learning        Neural Information Processing Systems. ArXiv:2303.11366.
+Representations. ArXiv:2308.00352.                               Smit, A.; Duckworth, P.; Grinsztajn, N.; Barrett, T. D.; and
+Irving, G.; Christiano, P.; and Amodei, D. 2018. AI Safety       Pretorius, A. 2024. Should We Be Going MAD? A Look at
+via Debate. arXiv preprint arXiv:1805.00899.                     Multi-Agent Debate Strategies for LLMs. In Proceedings of
+Kaesberg, L. B.; Becker, J.; Wahle, J. P.; Ruas, T.; and Gipp,   the 41st International Conference on Machine Learning.
+B. 2025. Voting or Consensus? Decision-Making in Multi-          Stasser, G.; and Titus, W. 1985. Pooling of Unshared In-
+Agent Debate. In Findings of the Association for Computa-        formation in Group Decision Making: Biased Information
+tional Linguistics: ACL 2025. ArXiv:2502.19130.                  Sampling During Discussion. Journal of Personality and
+                                                                 Social Psychology, 48(6): 1467–1478.
+Khan, A.; Hughes, J.; Valentine, D.; Ruis, L.; Sachan, K.;
+Radhakrishnan, A.; Grefenstette, E.; Bowman, S. R.; Rock-        Surowiecki, J. 2004. The Wisdom of Crowds. Doubleday.
+täschel, T.; and Perez, E. 2024. Debating with More Persua-      Trivedi, H.; Balasubramanian, N.; Khot, T.; and Sabharwal,
+sive LLMs Leads to More Truthful Answers. In Proceedings         A. 2022. MuSiQue: Multihop Questions via Single-Hop
+of the 41st International Conference on Machine Learning.        Question Composition. Transactions of the Association for
+Li, G.; Hammoud, H. A. A. K.; Itani, H.; Khizbullin, D.;         Computational Linguistics, 10: 539–554.
+and Ghanem, B. 2023. CAMEL: Communicative Agents                 Wang, C.; Yang, Y.; Du, B.; Lin, S.; and Liu, H. 2026.
+for “Mind” Exploration of Large Language Model Soci-             LLM Agents for Deliberative Collaboration: A Study
+ety. In Advances in Neural Information Processing Systems.       on Joint Decision Making under Partial Observability.
+ArXiv:2303.17760.                                                arXiv:2607.06157.
+Li, Y.; Naito, A.; and Shirado, H. 2025. HiddenBench: As-        Wang, X.; Wei, J.; Schuurmans, D.; Le, Q.; Chi, E.; Narang,
+sessing Collective Reasoning in Multi-Agent LLMs via Hid-        S.; Chowdhery, A.; and Zhou, D. 2023. Self-Consistency
+den Profile Tasks. arXiv:2505.11556.                             Improves Chain of Thought Reasoning in Language Mod-
+                                                                 els. In The Eleventh International Conference on Learning
+Li, Y.; Tao, Y.; Zhang, K.; Wang, T.; Gu, G.; and                Representations.
+Zhou, Y. 2026.     Diverse Evidence, Better Forecasts:
+                                                                 Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Ichter, B.;
+Multi-Agent Deliberation under Information Asymmetry.
+                                                                 Xia, F.; Chi, E.; Le, Q. V.; and Zhou, D. 2022. Chain-
+arXiv:2607.01661.
+                                                                 of-Thought Prompting Elicits Reasoning in Large Language
+Liang, T.; He, Z.; Jiao, W.; Wang, X.; Wang, Y.; Wang, R.;       Models. In Advances in Neural Information Processing Sys-
+Yang, Y.; Tu, Z.; and Shi, S. 2024. Encouraging Divergent        tems.
+Thinking in Large Language Models through Multi-Agent            Wu, Q.; Bansal, G.; Zhang, J.; Wu, Y.; Zhang, S.; Zhu, E.;
+Debate. In Proceedings of the 2024 Conference on Empirical       Li, B.; Jiang, L.; Zhang, X.; and Wang, C. 2024. AutoGen:
+Methods in Natural Language Processing.                          Enabling Next-Gen LLM Applications via Multi-Agent Con-
+Liu, K.; Xiong, G.; Zhang, W.; and Tang, S. 2026. Social         versation. In The First Conference on Language Modeling.
+Networks of LLM Agents. arXiv:2607.03695.                        ArXiv:2308.08155.
+<PARSED TEXT FOR PAGE: 9 / 9>
+Yang, Y.; Yi, E.; Ko, J.; Lee, K.; Jin, Z.; and Yun, S.-
+Y. 2025. Revisiting Multi-Agent Debate as Test-Time
+Scaling: A Systematic Study of Conditional Effectiveness.
+arXiv:2505.22960.
+Yang, Z.; Qi, P.; Zhang, S.; Bengio, Y.; Cohen, W. W.;
+Salakhutdinov, R.; and Manning, C. D. 2018. HotpotQA:
+A Dataset for Diverse, Explainable Multi-Hop Question An-
+swering. In Proceedings of the 2018 Conference on Empiri-
+cal Methods in Natural Language Processing.
+Yao, S.; Yu, D.; Zhao, J.; Shafran, I.; Griffiths, T. L.;
+Cao, Y.; and Narasimhan, K. 2023. Tree of Thoughts:
+Deliberate Problem Solving with Large Language Mod-
+els. In Advances in Neural Information Processing Systems.
+ArXiv:2305.10601.
+Zhang, Z.; Nguyen, C. C.; Wells, K.; and Carneiro, G. 2026.
+Multi-Agent Decision Making: A Blackwell’s Informative-
+ness Approach. arXiv:2605.06028.
+Zhu, X.; Zhang, C.; Chi, Y.; Stafford, T.; Collier, N.; and
+Vlachos, A. 2026. Demystifying Multi-Agent Debate: The
+Role of Confidence and Diversity. arXiv:2601.19921.
+
+===== END EXTRACTED SOURCE =====
